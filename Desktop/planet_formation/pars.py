@@ -10,6 +10,7 @@ mEarth = 5.9722e+27
 au = 1.495978707e13 #astronomical unit (in cm)
 yr = 2*m.pi /m.sqrt(G*mSun/au**3) #1 year in seconds
 vKep_au = m.sqrt(G*mSun /au)
+tKep_au = 2 * m.pi * au / vKep_au
 
 
 #problem parameters
