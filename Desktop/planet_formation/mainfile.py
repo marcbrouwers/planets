@@ -33,11 +33,9 @@ for dt_yr in [1e-3]:
             #ax1.scatter(time/pars.tKep_au * np.ones(pars.Np), vdust[:, 1] * xdust[:,0], color='k')
             #ax2.scatter(xdust[:,0] * np.cos(xdust[:,1])/pars.au, xdust[:,0] * np.sin(xdust[:,1])/pars.au, color='k')
             ax1.scatter(time/pars.tKep_au * np.ones(pars.Np), vdust[:,0], color='k')
+            ax2.scatter(time/pars.tKep_au * np.ones(pars.Np), vdust[:,1] * xdust[:,0] - fn.v_kep(xdust[:,0]), color='k')
             e = -pars.G * pars.mSun / xdust[:,0] + 0.5 * (vdust[:,0]**2 + (vdust[:,1]*xdust[:,0])**2)
-            tstop = 1 * pars.yr
-            eta = 1 - 0.996**2
-            vr_analytical = - eta / (fn.v_kep(xdust) * tstop / xdust[:,0] +  xdust[:,0] / (fn.v_kep(xdust) * tstop)) * fn.v_kep(xdust)
-            ax2.scatter(time/pars.tKep_au * np.ones(pars.Np), vr_analytical, color='k')
+            #ax2.scatter(time/pars.tKep_au * np.ones(pars.Np), xdust[:,0], color='k')
             #ax1.scatter(time / (2 * m.pi * pars.au / pars.vKep_au) * np.ones(pars.Np), vt, color='k')
             #ax2.scatter(time / (2 * m.pi * pars.au / pars.vKep_au) * np.ones(pars.Np), vr, color='k')
             #ax1.scatter(time / (2 * m.pi * pars.au / pars.vKep_au) * np.ones(pars.Np), force_plot, color='k')

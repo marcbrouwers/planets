@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
-
+from __future__ import division
 import numpy as np
 import pars
 import math as m
@@ -14,35 +14,49 @@ def init_2body ():
     r = np.ones(pars.Np) * pars.au # starting radii particles
     phi = np.zeros(pars.Np) # starting angles in xy plane
     z = np.zeros(pars.Np) # starting z positions
-    v = np.sqrt(pars.G*pars.mSun/r) # keplerian starting velocity
     xdust = np.stack((r, phi, z), axis=-1) # position vector
-    vdust = 0.9999*np.stack((np.zeros(pars.Np),v/r, np.zeros(pars.Np)), axis=-1) # velocity vector
+    
+    T_gas, rho_gas, omega_gas, eta = disk_properties(pars.r0)
+    t_stop = pars.rho_dust * pars.R_dust / (rho_gas * pars.visc)
+    v_r = - eta / (v_kep(r) * t_stop / r +  r / (v_kep(r) * t_stop)) * v_kep(r)
+    v_phi = np.sqrt(v_kep(r)**2 + r *v_r / t_stop)
+    vdust = np.stack((v_r * np.ones(pars.Np), v_phi/r, np.zeros(pars.Np)), axis=-1) # position vector
     mdust = np.ones(pars.Np)
     
     return xdust, vdust, mdust
 
 
-def v_kep (xobj):
-    return np.sqrt(pars.G * pars.mSun / xobj[:,0])
-    
+def v_kep (r):
+    return np.sqrt(pars.G * pars.mSun / r)
+
+
 def disk_properties (r):
     '''docstring'''
     
     T_disk = 150 * (r/(5.2*pars.au))**-.5
     rho_disk = 5e-11 * (r/(5.2*pars.au))**-2.75
+    cs_disk = pars.cs_cst * np.sqrt(T_disk)
+    eta = pars.n * cs_disk**2 /  v_kep(r)**2
     
-    return T_disk, rho_disk
+    rho_gas = 0.01*rho_disk
+    omega_gas = v_kep(r) / r * np.sqrt(1. - eta)
+    T_gas = T_disk
+    
+    return T_gas, rho_gas, omega_gas, eta
     
 
 def accelerations (xobj, vobj, mobj):
     '''docstring'''
     
-    tstop = 1 * pars.yr
-    vgas = np.stack((np.zeros(pars.Np), 0.996*vobj[:,1], np.zeros(pars.Np)), axis=-1)
+    T_gas, rho_gas, omega_gas, eta = disk_properties(xobj[:,0])
+    t_stop = pars.rho_dust * pars.R_dust / (rho_gas * pars.visc)
+    
+    vgas = np.stack((np.zeros(pars.Np), np.ones(pars.Np) * omega_gas, np.zeros(pars.Np)), axis=-1)
+    
     acc_r_Gravity = - pars.G * pars.mSun / xobj[:,0]**2
     acc_r_centrifical = vobj[:,1]**2 * xobj[:,0]
     acc_phi_centrifical = - 2*vobj[:,0] / xobj[:,0] * vobj[:,1]
-    acc_drag = (vgas - vobj) / tstop
+    acc_drag = (vgas - vobj) / t_stop
     acc_total = acc_drag
     acc_total[:,0] += acc_r_Gravity + acc_r_centrifical
     acc_total[:,1] += acc_phi_centrifical
