@@ -22,6 +22,9 @@ def init_2body ():
     return xdust, vdust, mdust
 
 
+def v_kep (xobj):
+    return np.sqrt(pars.G * pars.mSun / xobj[:,0])
+    
 def disk_properties (r):
     '''docstring'''
     
