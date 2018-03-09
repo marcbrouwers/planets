@@ -16,7 +16,7 @@ def init_2body ():
     z = np.zeros(pars.Np) # starting z positions
     v = np.sqrt(pars.G*pars.mSun/r) # keplerian starting velocity
     xdust = np.stack((r, phi, z), axis=-1) # position vector
-    vdust = np.stack((np.zeros(pars.Np),v/r, np.zeros(pars.Np)), axis=-1) # velocity vector
+    vdust = 0.9999*np.stack((np.zeros(pars.Np),v/r, np.zeros(pars.Np)), axis=-1) # velocity vector
     mdust = np.ones(pars.Np)
     
     return xdust, vdust, mdust
@@ -34,12 +34,11 @@ def disk_properties (r):
 def accelerations (xobj, vobj, mobj):
     '''docstring'''
     
-    tstop = 1000 * pars.yr
+    tstop = 1 * pars.yr
     vgas = np.stack((np.zeros(pars.Np), 0.996*vobj[:,1], np.zeros(pars.Np)), axis=-1)
-    
     acc_r_Gravity = - pars.G * pars.mSun / xobj[:,0]**2
     acc_r_centrifical = vobj[:,1]**2 * xobj[:,0]
-    acc_phi_centrifical = - vobj[:,0] / xobj[:,0] * vobj[:,1]
+    acc_phi_centrifical = - 2*vobj[:,0] / xobj[:,0] * vobj[:,1]
     acc_drag = (vgas - vobj) / tstop
     acc_total = acc_drag
     acc_total[:,0] += acc_r_Gravity + acc_r_centrifical
@@ -71,13 +70,13 @@ def integrator (xarr, varr, marr, dt):
     varr += accnew*dt/2
 
 # =============================================================================
-#     a = forces(xarr,varr, marr) / marr
+#     a = accelerations(xarr,varr, marr)
 #     v2 = varr + a*dt*.5
-#     a2 = forces(xarr + varr*dt*.5, varr +a*dt*.5, marr) / marr
+#     a2 = accelerations(xarr + varr*dt*.5, varr +a*dt*.5, marr)
 #     v3 = varr + a2 * dt*.5
-#     a3 = forces(xarr + v2*dt*.5, varr +a*dt*.5, marr) / marr
+#     a3 = accelerations(xarr + v2*dt*.5, varr +a*dt*.5, marr)
 #     v4 = varr + a3 * dt
-#     a4 = forces(xarr + v3*dt, varr +a*dt*.5, marr) / marr
+#     a4 = accelerations(xarr + v3*dt, varr +a*dt*.5, marr)
 #     xarr += (varr + 2*v2 + 2*v3 + v4)*dt / 6
 #     varr += (a + 2*a2 + 2*a3 + a4)*dt / 6
 # =============================================================================
