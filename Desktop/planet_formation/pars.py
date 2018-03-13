@@ -26,7 +26,7 @@ n = 3
 #problem parameters
 Np = 1 #2 particles
 e_max = 0.
-R_dust = 100.
+R_dust = 1.
 rho_dust = 3.
 visc = 2.4e+5
 r0 = 1 * au

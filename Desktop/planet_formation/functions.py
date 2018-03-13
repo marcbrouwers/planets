@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
 from __future__ import division
 import numpy as np
 import pars
@@ -13,54 +12,62 @@ def init_2body ():
     
     r = np.ones(pars.Np) * pars.au # starting radii particles
     phi = np.zeros(pars.Np) # starting angles in xy plane
-    z = np.zeros(pars.Np) # starting z positions
-    xdust = np.stack((r, phi, z), axis=-1) # position vector
+    z = r * 0.01 # starting z positions
+    xdust = np.stack((r, phi, z), axis=0) # position vector
     
-    T_gas, rho_gas, omega_gas, eta = disk_properties(pars.r0)
+    T_gas, rho_gas, omega_gas, eta = disk_properties(r, z)
     t_stop = pars.rho_dust * pars.R_dust / (rho_gas * pars.visc)
+    print t_stop / pars.yr
     v_r = - eta / (v_kep(r) * t_stop / r +  r / (v_kep(r) * t_stop)) * v_kep(r)
     v_phi = np.sqrt(v_kep(r)**2 + r *v_r / t_stop)
-    vdust = np.stack((v_r * np.ones(pars.Np), v_phi/r, np.zeros(pars.Np)), axis=-1) # position vector
+    v_z = -omega_gas**2 * t_stop * z
+    print v_z
+    vdust = np.stack((v_r * np.ones(pars.Np), v_phi/r, v_z), axis=0) # position vector
     mdust = np.ones(pars.Np)
     
     return xdust, vdust, mdust
-
 
 def v_kep (r):
     return np.sqrt(pars.G * pars.mSun / r)
 
 
-def disk_properties (r):
+def disk_properties (r, z):
     '''docstring'''
     
-    T_disk = 150 * (r/(5.2*pars.au))**-.5
-    rho_disk = 5e-11 * (r/(5.2*pars.au))**-2.75
-    cs_disk = pars.cs_cst * np.sqrt(T_disk)
-    eta = pars.n * cs_disk**2 /  v_kep(r)**2
+    T = 600 * (r/pars.au)**-.5
+    sigma = 1.7e+3 * (r/pars.au)**-1.5
+    cs = pars.cs_cst * np.sqrt(T)
+    omega = v_kep(r) / r
+    h = cs / omega
+    eta = pars.n * cs**2 /  v_kep(r)**2
+    rho_disk = sigma / (np.sqrt(2*m.pi)*h)
     
-    rho_gas = 0.01*rho_disk
-    omega_gas = v_kep(r) / r * np.sqrt(1. - eta)
-    T_gas = T_disk
-    
-    return T_gas, rho_gas, omega_gas, eta
+    rho_gas = 0.01*rho_disk*np.exp(-0.5*(z/h)**2)
+    omega_gas = omega * np.sqrt(1. - eta)
+
+    return T, rho_gas, omega_gas, eta
     
 
 def accelerations (xobj, vobj, mobj):
     '''docstring'''
     
-    T_gas, rho_gas, omega_gas, eta = disk_properties(xobj[:,0])
+    r, phi, z = xobj[0,:], xobj[1,:], xobj[2,:]
+    v_r, omega_phi, v_z = vobj[0,:], vobj[1,:], vobj[2,:]
+    theta = np.arctan(z/r)
+    T_gas, rho_gas, omega_gas, eta = disk_properties(r, z)
     t_stop = pars.rho_dust * pars.R_dust / (rho_gas * pars.visc)
     
-    vgas = np.stack((np.zeros(pars.Np), np.ones(pars.Np) * omega_gas, np.zeros(pars.Np)), axis=-1)
+    vgas = np.stack((np.zeros(pars.Np), np.ones(pars.Np) * omega_gas, np.zeros(pars.Np)), axis=0)
     
-    acc_r_Gravity = - pars.G * pars.mSun / xobj[:,0]**2
-    acc_r_centrifical = vobj[:,1]**2 * xobj[:,0]
-    acc_phi_centrifical = - 2*vobj[:,0] / xobj[:,0] * vobj[:,1]
+    acc_Gravity_star = - pars.G * pars.mSun / (r**2 + z**2)
+    acc_r_centrifical = omega_phi**2 * r
+    acc_phi_centrifical = - 2*v_r / r * omega_phi
     acc_drag = (vgas - vobj) / t_stop
     acc_total = acc_drag
-    acc_total[:,0] += acc_r_Gravity + acc_r_centrifical
-    acc_total[:,1] += acc_phi_centrifical
-    
+    acc_total[0,:] += acc_Gravity_star * np.cos(theta)+ acc_r_centrifical
+    acc_total[1,:] += acc_phi_centrifical
+    acc_total[2,:] += acc_Gravity_star * np.sin(theta)
+
     return acc_total
 
 
