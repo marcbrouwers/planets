@@ -3,6 +3,7 @@
 
 from __future__ import division
 import math as m
+import numpy as np
 
 #constants
 G = 6.67408e-08 #Newton’s gravitational constant
@@ -24,9 +25,13 @@ cs_cst = m.sqrt(gamma_av * k / m_av)
 n = 3
 
 #problem parameters
-Np = 1 #2 particles
-e_max = 0.
-R_dust = 1.
+R_dust = np.array([1.])
+Np = len(R_dust)
 rho_dust = 3.
-visc = 2.4e+5
 r0 = 1 * au
+
+
+t_eddie = 0.01*yr
+t_no_eddie = 0.1*yr
+v_eddie = 1e+5 # cm/s
+use_eddie = False

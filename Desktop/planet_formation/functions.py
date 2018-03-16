@@ -12,52 +12,67 @@ def init_2body ():
     
     r = np.ones(pars.Np) * pars.au # starting radii particles
     phi = np.zeros(pars.Np) # starting angles in xy plane
-    z = r * 0.01 # starting z positions
+    z = r * 0. # starting z positions
     xdust = np.stack((r, phi, z), axis=0) # position vector
     
-    T_gas, rho_gas, omega_gas, eta = disk_properties(r, z)
-    t_stop = pars.rho_dust * pars.R_dust / (rho_gas * pars.visc)
-    print t_stop / pars.yr
-    v_r = - eta / (v_kep(r) * t_stop / r +  r / (v_kep(r) * t_stop)) * v_kep(r)
-    v_phi = np.sqrt(v_kep(r)**2 + r *v_r / t_stop)
+    T_gas, rho_gas, omega_gas, eta, v_th = disk_properties(r, z)
+    t_stop = pars.rho_dust * pars.R_dust / (rho_gas * v_th)
+    vkep = v_kep(r, z)
+    v_r = - eta / (vkep * t_stop / r +  r / (vkep * t_stop)) * vkep
+    v_phi = np.sqrt(vkep**2 + r *v_r / t_stop)
     v_z = -omega_gas**2 * t_stop * z
-    print v_z
-    vdust = np.stack((v_r * np.ones(pars.Np), v_phi/r, v_z), axis=0) # position vector
-    mdust = np.ones(pars.Np)
+    vdust = np.stack((v_r, v_phi/r, v_z), axis=0) # position vector
+    
+    mdust = 4/3*m.pi*pars.R_dust**3
+    
+    print t_stop/pars.yr
     
     return xdust, vdust, mdust
 
-def v_kep (r):
-    return np.sqrt(pars.G * pars.mSun / r)
+
+def v_kep (r, z):
+    theta = np.arctan(r/z)
+    
+    return np.sqrt(pars.G * pars.mSun) * np.sqrt(r / (r**2 + z**2)) * np.sin(theta)
 
 
 def disk_properties (r, z):
     '''docstring'''
     
     T = 600 * (r/pars.au)**-.5
+   
     sigma = 1.7e+3 * (r/pars.au)**-1.5
     cs = pars.cs_cst * np.sqrt(T)
-    omega = v_kep(r) / r
+    omega = v_kep(r,z) / r
     h = cs / omega
-    eta = pars.n * cs**2 /  v_kep(r)**2
-    rho_disk = sigma / (np.sqrt(2*m.pi)*h)
+    eta = pars.n * cs**2 /  v_kep(r,z)**2
+    rho_disk = sigma / (2*h)
     
     rho_gas = 0.01*rho_disk*np.exp(-0.5*(z/h)**2)
     omega_gas = omega * np.sqrt(1. - eta)
-
-    return T, rho_gas, omega_gas, eta
+    v_th = m.sqrt(8/m.pi)*cs
+    
+    return T, rho_gas, omega_gas, eta, v_th
     
 
-def accelerations (xobj, vobj, mobj):
+def accelerations (xobj, vobj, mobj, Ed):
     '''docstring'''
     
     r, phi, z = xobj[0,:], xobj[1,:], xobj[2,:]
     v_r, omega_phi, v_z = vobj[0,:], vobj[1,:], vobj[2,:]
     theta = np.arctan(z/r)
-    T_gas, rho_gas, omega_gas, eta = disk_properties(r, z)
-    t_stop = pars.rho_dust * pars.R_dust / (rho_gas * pars.visc)
+    T_gas, rho_gas, omega_gas, eta, v_th = disk_properties(r, z)
+    t_stop = pars.rho_dust * pars.R_dust / (rho_gas * v_th)
+
+    if Ed is True:
+        angle_eddie = 2*m.pi*np.random.rand(pars.Np)[0]
+        v_eddie_phi = pars.v_eddie * np.cos(angle_eddie)
+        omega_eddie_phi = v_eddie_phi / r
+        v_eddie_r = pars.v_eddie * np.sin(angle_eddie)
+    else:
+        omega_eddie_phi, v_eddie_r = np.zeros(pars.Np), np.zeros(pars.Np)
     
-    vgas = np.stack((np.zeros(pars.Np), np.ones(pars.Np) * omega_gas, np.zeros(pars.Np)), axis=0)
+    vgas = np.stack((np.zeros(pars.Np) + v_eddie_r, np.ones(pars.Np) * omega_gas + omega_eddie_phi, np.zeros(pars.Np)), axis=0)
     
     acc_Gravity_star = - pars.G * pars.mSun / (r**2 + z**2)
     acc_r_centrifical = omega_phi**2 * r
@@ -67,7 +82,7 @@ def accelerations (xobj, vobj, mobj):
     acc_total[0,:] += acc_Gravity_star * np.cos(theta)+ acc_r_centrifical
     acc_total[1,:] += acc_phi_centrifical
     acc_total[2,:] += acc_Gravity_star * np.sin(theta)
-
+        
     return acc_total
 
 
@@ -84,15 +99,17 @@ def accelerations (xobj, vobj, mobj):
 # =============================================================================
 
 
-def integrator (xarr, varr, marr, dt):
+def integrator (xarr, varr, marr, dt, Ed):
     '''docstring'''
     
-    acc = accelerations(xarr, varr, marr)
+    acc = accelerations(xarr, varr, marr, Ed)
     varr += acc*dt/2
     xarr += varr*dt
-    accnew = accelerations(xarr, varr, marr) #update accelerations
+    accnew = accelerations(xarr, varr, marr, Ed) #update accelerations
     varr += accnew*dt/2
 
+    
+    
 # =============================================================================
 #     a = accelerations(xarr,varr, marr)
 #     v2 = varr + a*dt*.5

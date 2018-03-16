@@ -10,7 +10,7 @@ import math as m
 
 
 #declarations
-tfinal =  2 * pars.yr #end time (seconds)
+tfinal =  10 * pars.yr #end time (seconds)
 
 
 for dt_yr in [1e-3]:
@@ -23,36 +23,36 @@ for dt_yr in [1e-3]:
     fig1, axes = plt.subplots(2,2, figsize = (12,8))
     i = 0
     time = 0
+    n = 0 # number of eddies
     while time<tfinal:
-        xdust, vdust = fn.integrator(xdust, vdust, mdust, dt)
-#        etot = fn.energies (xdust, vdust, mdust)
+        xdust, vdust = fn.integrator(xdust, vdust, mdust, dt, pars.use_eddie)
+        
+        if time < (n+1)*pars.t_eddie + n * pars.t_no_eddie and pars.use_eddie is True:
+            Ed = True
+        elif time < (n+1)*pars.t_eddie + (n+1)*pars.t_no_eddie:
+            Ed = False
+        else:
+            n += 1
         time += dt
         
         i+= 1
         if i % plot_interval == 0:
             
-            #ax.scatter(time/pars.tKep_au * np.ones(pars.Np), vdust[1, :] * xdust[0,:], color='k')
             #ax1.scatter(xdust[0,:] * np.cos(xdust[1,:])/pars.au, xdust[0,:] * np.sin(xdust[1,:])/pars.au, color='k')
+            
             axes[0,0].scatter(time/pars.tKep_au * np.ones(pars.Np), xdust[0,:], color='k') # vr
             axes[0,1].scatter(time/pars.tKep_au * np.ones(pars.Np), xdust[2,:], color='k') # vz
             axes[1,0].scatter(time/pars.tKep_au * np.ones(pars.Np), vdust[0,:], color='k') # r
             axes[1,1].scatter(time/pars.tKep_au * np.ones(pars.Np), vdust[2,:], color='k') # z
-            #ax2.scatter(time/pars.tKep_au * np.ones(pars.Np), vdust[:,1] * xdust[:,0] - fn.v_kep(xdust[:,0]), color='k')
-            #e = -pars.G * pars.mSun / xdust[0,:] + 0.5 * (vdust[0,:]**2 + (vdust[1,:]*xdust[0,:])**2)
-            #ax2.scatter(time/pars.tKep_au * np.ones(pars.Np), xdust[0,:], color='k')
-            #ax1.scatter(time / (2 * m.pi * pars.au / pars.vKep_au) * np.ones(pars.Np), vt, color='k')
-            #ax2.scatter(time / (2 * m.pi * pars.au / pars.vKep_au) * np.ones(pars.Np), vr, color='k')
-            #ax1.scatter(time / (2 * m.pi * pars.au / pars.vKep_au) * np.ones(pars.Np), force_plot, color='k')
+            
             axes[0,0].set_xlabel('t (orbital times)')
             axes[1,0].set_xlabel('t (orbital times)')
             axes[0,1].set_xlabel('t (orbital times)')
             axes[1,1].set_xlabel('t (orbital times)')
-            axes[0,0].set_ylabel('r (cm/s)')
+            axes[0,0].set_ylabel('r (cm)')
             axes[1,0].set_ylabel('vr (cm/s)')
-            axes[0,1].set_ylabel('z (cm/s)')
+            axes[0,1].set_ylabel('z (cm)')
             axes[1,1].set_ylabel('vz (cm/s)')
+            
+    print n, 'total eddies'   
     plt.show()
-    
-#    etot = fn.energies (xdust, vdust, mdust)
-#    error = (etot -etot0) /etot0
-#    print error
