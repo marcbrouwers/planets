@@ -11,29 +11,33 @@ def init_2body ():
     '''docstring'''
     
     r = np.ones(pars.Np) * pars.au # starting radii particles
+    
+    z = 0.01*r
+    
     phi = np.zeros(pars.Np) # starting angles in xy plane
-    z = r * 0. # starting z positions
+    #z = r * 0.176 # starting z positions
     xdust = np.stack((r, phi, z), axis=0) # position vector
     
     T_gas, rho_gas, omega_gas, eta, v_th = disk_properties(r, z)
     t_stop = pars.rho_dust * pars.R_dust / (rho_gas * v_th)
+    
     vkep = v_kep(r, z)
     v_r = - eta / (vkep * t_stop / r +  r / (vkep * t_stop)) * vkep
     v_phi = np.sqrt(vkep**2 + r *v_r / t_stop)
     v_z = -omega_gas**2 * t_stop * z
+    v_z = np.zeros(pars.Np)
     vdust = np.stack((v_r, v_phi/r, v_z), axis=0) # position vector
     
     mdust = 4/3*m.pi*pars.R_dust**3
-    
-    print t_stop/pars.yr
     
     return xdust, vdust, mdust
 
 
 def v_kep (r, z):
-    theta = np.arctan(r/z)
+    theta = np.arctan(z/r)
     
-    return np.sqrt(pars.G * pars.mSun) * np.sqrt(r / (r**2 + z**2)) * np.sin(theta)
+    return np.sqrt(pars.G * pars.mSun) * np.sqrt(r / (r**2 + z**2)) * np.cos(theta)
+    #return np.sqrt(pars.G * pars.mSun / r)
 
 
 def disk_properties (r, z):
